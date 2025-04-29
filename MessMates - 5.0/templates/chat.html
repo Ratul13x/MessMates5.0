@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat with Everyone</title>
+    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/chat.css">
+
+
+    
+</head>
+
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo-header">
+                <img src="{{ url_for('static', filename='uploads/MessMatesx.png') }}" alt="MessMates" class="corner-logo">
+            </div>
+            <ul>
+                <li><a href="/home">My Space</a></li>
+                <li><a href="/chat">Chat</a></li>
+                <li><a href="/admin">Admin Dashboard</a></li>
+                <li><a href="/profile">Profile</a></li>
+                <li><a href="/logout">Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content chat-container">
+            <div id="messages">
+                {% for message in chat_messages %}
+                    {% if message.sender_id == user.id %}
+                    <div class="message my-message">
+                        <strong>Me:</strong><br>{{ message.message }}
+                    </div>
+                    {% else %}
+                        <!-- This is someone else's message -->
+                        <div class="message other-message">
+                            <strong>{{ message.sender.username }}</strong><br>{{ message.message }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            
+            
+            
+            
+            
+            
+
+            <div class="input-container">
+                <input type="text" id="message" placeholder="Type a message" onkeypress="checkEnter(event)">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      
+        const messagesContainer = document.getElementById('messages');
+
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Scroll on page load
+        window.onload = scrollToBottom;
+
+        // Scroll every time a new message is added
+        const observer = new MutationObserver(scrollToBottom);
+        observer.observe(messagesContainer, { childList: true });
+
+
+        var socket = io();  // Ensure this line is at the start
+        const currentUserId = {{ user.id }};
+    
+        // Join the room based on mess_code
+        socket.emit('join_room', '{{ user.mess_code }}');
+    
+        // Listen for incoming messages
+        socket.on('receive_message', function(data) {
+            var messageContainer = document.getElementById('messages');
+            var newMessage = document.createElement('div');
+            newMessage.classList.add('message');
+            
+            // If the message is from the current user
+            if (data.sender_id == currentUserId) {
+                newMessage.classList.add('my-message');  // Right alignment
+                newMessage.innerHTML = `<strong>Me:</strong><br>${data.message}`;
+            } else {
+                newMessage.classList.add('other-message');  // Left alignment
+                newMessage.innerHTML = `<strong>${data.sender_name}</strong><br>${data.message}`;
+            }
+    
+            // Append the new message to the messages container
+            messageContainer.appendChild(newMessage);
+    
+            // Scroll to the bottom to show the new message
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        });
+    
+        // Send the message when the user clicks the Send button
+        function sendMessage() {
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value;
+            const mess_code = '{{ user.mess_code }}';
+    
+            if (message.trim() !== "") {
+                // Emit the message to the server, but do not append it to the screen yet
+                socket.emit('send_message', {
+                    sender_id: currentUserId,
+                    receiver_id: {{ admin.id }},
+                    message: message,
+                    mess_code: mess_code,
+                    sender_name: '{{ user.username }}'  // Include sender's name
+                });
+    
+                // Clear the input field
+                messageInput.value = '';
+            }
+        }
+    
+        // Send message on pressing Enter
+        function checkEnter(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        }
+    </script>
+    
+    
+    
+
+</body>
+</html>
